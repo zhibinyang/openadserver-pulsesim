@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+package-lock.json # Depends on preference, usually committed. Let's commit it unless user says otherwise. Standard practice is to commit lockfile. Wait, I'll omit lockfile from ignore.
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build
+dist/
+build/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project Specific
+# Generated script changes daily, so we ignore it to avoid noisy diffs
+scripts/daily_script.json
+
+# Test coverage
+coverage/
+.nyc_output/
