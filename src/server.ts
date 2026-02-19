@@ -16,7 +16,28 @@ export class MonitoringServer {
                 const stats = StatsCollector.getInstance().getStats();
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(stats, null, 2));
-            } else {
+            }
+            else if (req.method === 'POST' && req.url === '/script/generate') {
+                console.log('Received manual script generation request...');
+                // Director is singleton, so we can lazily import or use instance if available
+                // To avoid circular dependency issues if any, we use dynamic require or ensure Director is safe
+                // But Director doesn't depend on Server, so simple import should be fine if we change file top
+                // However, let's just use the singleton pattern directly.
+
+                // We need to import Director at top of file
+                import('./director/director').then(async ({ Director }) => {
+                    try {
+                        const director = Director.getInstance();
+                        await director.generateDailyScript();
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: true, message: 'Script generation triggered' }));
+                    } catch (err) {
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: false, error: String(err) }));
+                    }
+                });
+            }
+            else {
                 res.writeHead(404);
                 res.end('Not Found');
             }

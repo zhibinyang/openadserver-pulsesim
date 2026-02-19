@@ -106,15 +106,50 @@ export class Pulse {
             }
 
             // Fire a batch of requests (simulate QPS)
-            // For exact QPS, we might need a precise token bucket. 
-            // For now, we just loop and let pLimit throttle the CONCURRENCY, 
-            // but to control RATE, we need a slight delay.
-
             const p = this.simulateSingleRequest();
 
-            // Control loop speed (approx 5 req/s -> 200ms delay)
-            await new Promise(r => setTimeout(r, 200));
+            // Calculate Dynamic Delay based on QPS Curve
+            const qps = this.getDynamicQPS();
+            const delayMs = Math.floor(1000 / qps);
+
+            // Debug QPS (Sample occasionally to avoid spam)
+            if (Math.random() < 0.10) {
+                // console.log(`[Pulse Debug] QPS: ${qps.toFixed(2)} | Delay: ${delayMs}ms`);
+            }
+
+            // Control loop speed
+            await new Promise(r => setTimeout(r, delayMs));
         }
+    }
+
+    /**
+     * Calculates QPS based on Time of Day and Random Volatility
+     * Night (0-6): Base 1
+     * Day (6-24): Base 3
+     * Volatility: 50% - 200%
+     */
+    private getDynamicQPS(): number {
+        const hour = new Date().getHours();
+        let baseQPS = 3;
+
+        // Night Mode (00:00 - 05:59)
+        if (hour >= 0 && hour < 6) {
+            baseQPS = 1;
+        }
+
+        // Optional: Simple curve adjustments
+        // Peak hours (12-13, 19-21) -> Boost slightly
+        if ((hour >= 12 && hour <= 13) || (hour >= 19 && hour <= 21)) {
+            baseQPS *= 1.2;
+        }
+
+        // Volatility: Random multiplier between 0.5 and 2.0
+        const volatility = 0.5 + Math.random() * 1.5;
+
+        const finalQPS = baseQPS * volatility;
+
+        // Ensure strictly positive
+        return Math.max(0.1, finalQPS);
     }
 
     private async simulateSingleRequest() {

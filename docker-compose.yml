@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  pulsesim:
+    build: .
+    container_name: pulsesim
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./scripts:/usr/src/app/scripts
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
