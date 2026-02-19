@@ -5,7 +5,7 @@ export class MonitoringServer {
     private server: http.Server;
     private port: number;
 
-    constructor(port: number = 3001) {
+    constructor(port: number = 3002) {
         this.port = port;
         this.server = http.createServer((req, res) => {
             // CORS for local dev

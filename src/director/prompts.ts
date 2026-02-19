@@ -65,8 +65,16 @@ export const USER_PROMPT_TEMPLATE = (date: string, campaigns: any[]) => `
 ${JSON.stringify(campaigns, null, 2)}
 
 # Task
+# Task
 Generate the daily market script for this date. ensuring the scenario matches the date (seasonality, day of week, holidays).
-Generate 20 User Profiles in the 'target_pool'.
+You MUST populate 'traffic_trends' with meaningful multipliers based on the story.
+Example:
+"traffic_trends": {
+    "country_weights": [ { "code": "CN", "weight": 1.5 }, { "code": "US", "weight": 0.8 } ],
+    "os_weights": [ { "name": "ios", "weight": 1.2 } ],
+    "browser_weights": []
+}
+Do NOT generate 'target_pool'.
 `;
 
 export const MARKET_SCRIPT_SCHEMA = {
@@ -80,16 +88,45 @@ export const MARKET_SCRIPT_SCHEMA = {
         },
         traffic_trends: {
             type: SchemaType.OBJECT,
-            description: "Traffic volume multipliers based on the story (0.5 to 2.0). Default is 1.0.",
+            description: "Traffic volume multipliers based on the story.",
             properties: {
                 country_weights: {
-                    type: SchemaType.OBJECT,
-                    description: "Multipliers for specific countries (e.g., 'CN': 1.5 during Lunar New Year)"
+                    type: SchemaType.ARRAY,
+                    description: "List of countries with non-default weights",
+                    items: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            code: { type: SchemaType.STRING, description: "Country Code (e.g. CN, US)" },
+                            weight: { type: SchemaType.NUMBER, description: "Multiplier (0.5 - 2.0)" }
+                        },
+                        required: ["code", "weight"]
+                    }
                 },
-                os_weights: { type: SchemaType.OBJECT },
-                browser_weights: { type: SchemaType.OBJECT }
-            }
+                os_weights: {
+                    type: SchemaType.ARRAY,
+                    items: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            name: { type: SchemaType.STRING, description: "OS Name (e.g. ios, android)" },
+                            weight: { type: SchemaType.NUMBER }
+                        },
+                        required: ["name", "weight"]
+                    }
+                },
+                browser_weights: {
+                    type: SchemaType.ARRAY,
+                    items: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            name: { type: SchemaType.STRING },
+                            weight: { type: SchemaType.NUMBER }
+                        },
+                        required: ["name", "weight"]
+                    }
+                }
+            },
+            required: ["country_weights", "os_weights", "browser_weights"]
         }
     },
-    required: ["scenario_name", "strategy_summary", "feature_modifiers"]
+    required: ["scenario_name", "strategy_summary", "traffic_trends"]
 };

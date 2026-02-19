@@ -14,7 +14,7 @@ async function main() {
 
     const director = Director.getInstance();
     const pulse = Pulse.getInstance();
-    const monitor = new MonitoringServer(3001);
+    const monitor = new MonitoringServer(3002);
 
     // 1. Initialize Director (Starts Cron)
     await director.initialize();

@@ -31,6 +31,7 @@ export class GeminiClient {
             const result = await this.model.generateContent(prompt);
             const response = await result.response;
             const text = response.text();
+            console.log('[Gemini DEBUG] Raw Response:', text);
             return JSON.parse(text);
         } catch (error) {
             console.error("Gemini API Error:", error);

@@ -10,7 +10,7 @@ async function main() {
     console.log('--- Testing Pulse Engine & Monitor ---');
 
     const pulse = Pulse.getInstance();
-    const monitor = new MonitoringServer(3001);
+    const monitor = new MonitoringServer(3002);
 
     monitor.start();
     await pulse.start();
@@ -21,7 +21,7 @@ async function main() {
     setTimeout(async () => {
         try {
             console.log('🔍 Querying Stats...');
-            const res = await axios.get('http://localhost:3001/stats');
+            const res = await axios.get('http://localhost:3002/stats');
             console.log('📊 Stats Received:', JSON.stringify(res.data, null, 2));
         } catch (err) {
             console.error('❌ Failed to Query Stats:', err);

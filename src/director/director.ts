@@ -135,10 +135,23 @@ export class Director {
             return `${p1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
         };
 
-        // Extract modifiers from LLM response
-        const countryMods = trafficTrends?.country_weights || {};
-        const osMods = trafficTrends?.os_weights || {};
-        const browserMods = trafficTrends?.browser_weights || {};
+        // Helper to convert array of weights to map
+        const toMap = (list: any[], keyField: string) => {
+            const map: Record<string, number> = {};
+            if (Array.isArray(list)) {
+                list.forEach(item => {
+                    if (item[keyField] && item.weight) {
+                        map[item[keyField]] = item.weight;
+                    }
+                });
+            }
+            return map;
+        };
+
+        // Extract modifiers from LLM response (handling new Array schema)
+        const countryMods = toMap(trafficTrends?.country_weights, 'code');
+        const osMods = toMap(trafficTrends?.os_weights, 'name');
+        const browserMods = toMap(trafficTrends?.browser_weights, 'name');
 
         for (let i = 0; i < poolSize; i++) {
             // Cascade Selection
