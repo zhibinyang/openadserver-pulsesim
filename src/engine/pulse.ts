@@ -130,6 +130,7 @@ export class Pulse {
                 // We enforce the ad-request.dto structure
                 const adRequest = {
                     ...user,
+                    user_id: uuidv4(),
                     request_id: uuidv4(),
                     timestamp: Date.now()
                 };
@@ -146,14 +147,22 @@ export class Pulse {
                     validateStatus: () => true // Do not throw on error status
                 });
 
-                // Record Stats
-                StatsCollector.getInstance().record(url, response.status);
-
                 if (response.status >= 200 && response.status < 300) {
-                    if (response.data && response.data.ad) {
-                        this.handleAdImpression(response.data.ad, user);
+                    const data = response.data;
+                    // OpenAdServer returns { candidates: [...] }
+                    const ad = data.candidates && data.candidates.length > 0 ? data.candidates[0] : (data.ad || null);
+
+                    // Stats: If 201 but no ad, record as 204 (No Content) to distinguish
+                    const statusToRecord = (response.status === 201 && !ad) ? 204 : response.status;
+                    StatsCollector.getInstance().record(url, statusToRecord);
+
+                    if (ad) {
+                        this.handleAdImpression(ad, user);
                     }
                 } else {
+                    // Record error status
+                    StatsCollector.getInstance().record(url, response.status);
+
                     console.warn(`⚠️ [Pulse] Request Failed. Status: ${response.status} | URL: ${url}`);
                     console.warn(`   Response: ${JSON.stringify(response.data)}`);
                     console.warn(`   Request Payload: ${JSON.stringify(adRequest)}`);
@@ -171,27 +180,48 @@ export class Pulse {
         // console.log(`[Impression] Ad ID ${ad.id} served to ${user.user_id}`);
 
         // Check Click
-        if (this.probabilityEngine.shouldClick(user, this.currentScript.feature_modifiers)) {
+        const shouldClick = this.probabilityEngine.shouldClick(user, this.currentScript.feature_modifiers);
+        if (shouldClick) {
             // Schedule Click
-            // We need the click URL from the ad response. 
-            // Assuming standard OpenAdServer format: ad.click_url or specific tracking endpoint.
-            // For this simulation, let's assume we construct it or it's provided.
+            // User requested to use 'click_pixel' for simulation as landing_url is a redirect.
+            const clickUrl = ad.click_pixel || ad.landing_url || ad.click_url;
 
-            const clickUrl = ad.click_url || `${process.env.OPENADSERVER_HOST}/api/v1/ad/click?id=${ad.id}`;
+            if (clickUrl) {
+                // Random delay 1-5s
+                const delay = Math.floor(Math.random() * 4000) + 1000;
+                this.eventQueue.addEvent('click', clickUrl, delay);
 
-            // Random delay 1-5s
-            const delay = Math.floor(Math.random() * 4000) + 1000;
+                // Check Conversion (conditional on click)
+                if (this.probabilityEngine.shouldConvert(user, this.currentScript.feature_modifiers)) {
+                    // Schedule Conversion
+                    // OpenAdServer returns 'conversion_pixel' with ${CONVERSION_VALUE} placeholder
+                    let convUrl = ad.conversion_pixel || ad.conversion_url;
+                    if (convUrl) {
+                        // Replace placeholder with random value 10-2000
+                        const value = Math.floor(Math.random() * 1991) + 10;
+                        convUrl = convUrl.replace('${CONVERSION_VALUE}', value.toString());
 
-            this.eventQueue.addEvent('click', clickUrl, delay);
+                        // Conversion Delay Logic (Long Tail)
+                        // Min: 1 minute (60,000ms)
+                        // Max: 24 hours (86,400,000ms)
+                        const MIN_DELAY = 60 * 1000;
+                        const MAX_DELAY = 24 * 60 * 60 * 1000;
 
-            // Check Conversion (conditional on click)
-            if (this.probabilityEngine.shouldConvert(user, this.currentScript.feature_modifiers)) {
-                // Schedule Conversion
-                const convUrl = ad.conversion_url || `${process.env.OPENADSERVER_HOST}/api/v1/ad/conversion?id=${ad.id}`;
-                // Random delay 5s - 60s (short for testing)
-                const convDelay = delay + Math.floor(Math.random() * 55000) + 5000;
+                        // Use power function to create long-tail distribution
+                        // Math.random() is 0..1. Raising to power 3 biases heavily towards 0 (shorter delays).
+                        // result is mostly small, occasionally large.
+                        const bias = Math.pow(Math.random(), 3);
+                        const tailDelay = Math.floor(bias * (MAX_DELAY - MIN_DELAY));
 
-                this.eventQueue.addEvent('conversion', convUrl, convDelay);
+                        const convDelay = delay + MIN_DELAY + tailDelay;
+
+                        // Debug log for long delays (showing minutes/hours)
+                        const debugTime = convDelay / 1000 / 60; // in minutes
+                        // console.log(`[Pulse Debug] Scheduled Conv in ${debugTime.toFixed(1)} min`);
+
+                        this.eventQueue.addEvent('conversion', convUrl, convDelay);
+                    }
+                }
             }
         }
     }

@@ -2,8 +2,8 @@ export class ProbabilityEngine {
     private static instance: ProbabilityEngine;
 
     // Baselines
-    private readonly BASE_CTR = 0.05; // 5% (High for simulation visibility)
-    private readonly BASE_CVR = 0.10; // 10% of clicks convert
+    private readonly BASE_CTR = 0.02; // 2% CTR
+    private readonly BASE_CVR = 0.05; // 5% CVR after click
 
     private constructor() { }
 
@@ -41,7 +41,9 @@ export class ProbabilityEngine {
         const result = roll < probability;
 
         if (result) {
-            // console.log(`[Probability] Click WIN! (p=${probability.toFixed(4)}, roll=${roll.toFixed(4)})`);
+            console.log(`[Probability] Click WIN! (p=${probability.toFixed(4)}, roll=${roll.toFixed(4)})`);
+        } else {
+            // console.log(`[Probability] Click LOSS (p=${probability.toFixed(4)}, roll=${roll.toFixed(4)})`);
         }
 
         return result;

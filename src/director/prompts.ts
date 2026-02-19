@@ -48,15 +48,14 @@ Based on the provided Date, Active Campaigns, and Targeting Rules, generate a JS
      - Safari has high share in US/JP/UK.
 
 3. **Campaign Matching**:
-   - The generated 'target_pool' (User Profiles) MUST be designed to hit the Active Campaigns.
-   - Ensure a good mix of profiles that match and do NOT match specific campaigns to test filtering.
-
-4. **Multipliers**:
-   - 'feature_modifiers' control the CTR bias. Values should be in range [0.5, 3.0].
-   - If today is a special event (e.g., 'Black Friday'), boost relevant shopping features.
+5. **Traffic Trends**:
+   - Instead of generating individual users, you will define **Trend Multipliers**.
+   - If the story implies high mobile usage, boost 'os:android'/'os:ios'.
+   - If the story focuses on a specific region (e.g. 'Japan Tech Week'), boost 'country:JP'.
 
 # Output Format
 You must output a JSON object adhering to the schema defined in the API call.
+Do NOT generate the 'target_pool' array. It will be generated programmatically based on your trends.
 `;
 
 export const USER_PROMPT_TEMPLATE = (date: string, campaigns: any[]) => `
@@ -73,35 +72,24 @@ Generate 20 User Profiles in the 'target_pool'.
 export const MARKET_SCRIPT_SCHEMA = {
     type: SchemaType.OBJECT,
     properties: {
-        scenario_name: { type: SchemaType.STRING, description: "Theme of the day (e.g., 'Cyber Monday Pre-warm')" },
+        scenario_name: { type: SchemaType.STRING, description: "Theme of the day" },
         strategy_summary: { type: SchemaType.STRING, description: "Brief explanation of the market conditions" },
         feature_modifiers: {
             type: SchemaType.OBJECT,
-            description: "Key-value pairs for CTR multipliers (e.g., 'os:ios': 1.2)",
+            description: "CTR/CVR modifiers (e.g., 'os:ios': 1.2)",
         },
-        target_pool: {
-            type: SchemaType.ARRAY,
-            items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                    user_id: { type: SchemaType.STRING },
-                    slot_id: { type: SchemaType.STRING },
-                    slot_type: { type: SchemaType.NUMBER, description: "1=Banner, 2=Native, 3=Video, 4=Interstitial" },
-                    ip: { type: SchemaType.STRING },
-                    country: { type: SchemaType.STRING, enum: TARGETING_ENUMS.countries },
-                    city: { type: SchemaType.STRING },
-                    os: { type: SchemaType.STRING, enum: TARGETING_ENUMS.os },
-                    browser: { type: SchemaType.STRING, enum: TARGETING_ENUMS.browser },
-                    device: { type: SchemaType.STRING, enum: TARGETING_ENUMS.device },
-                    app_id: { type: SchemaType.STRING },
-                    age: { type: SchemaType.NUMBER },
-                    gender: { type: SchemaType.STRING, enum: ["M", "F", "O"] },
-                    interests: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    page_context: { type: SchemaType.STRING }
+        traffic_trends: {
+            type: SchemaType.OBJECT,
+            description: "Traffic volume multipliers based on the story (0.5 to 2.0). Default is 1.0.",
+            properties: {
+                country_weights: {
+                    type: SchemaType.OBJECT,
+                    description: "Multipliers for specific countries (e.g., 'CN': 1.5 during Lunar New Year)"
                 },
-                required: ["user_id", "slot_id", "country", "os", "browser", "device"]
+                os_weights: { type: SchemaType.OBJECT },
+                browser_weights: { type: SchemaType.OBJECT }
             }
         }
     },
-    required: ["scenario_name", "strategy_summary", "feature_modifiers", "target_pool"]
+    required: ["scenario_name", "strategy_summary", "feature_modifiers"]
 };

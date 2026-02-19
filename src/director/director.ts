@@ -62,13 +62,24 @@ export class Director {
 
             // 3. Call LLM
             console.log('Calling Gemini to generate market script...');
-            const script = await this.gemini.generateScript(prompt);
+            const llmResponse = await this.gemini.generateScript(prompt);
 
-            // 4. Save to file
-            await this.saveScript(script);
+            // 4. Generate Programmatic User Pool
+            console.log('Generating logical user pool based on trends...');
+            const targetPool = this.generateUserPool(llmResponse.traffic_trends);
+
+            // Merge back
+            const finalScript = {
+                ...llmResponse,
+                target_pool: targetPool
+            };
+
+            // 5. Save to file
+            await this.saveScript(finalScript);
 
             console.log(`Daily script generated and saved to ${this.scriptPath}`);
-            console.log(`Scenario: ${script.scenario_name}`);
+            console.log(`Scenario: ${finalScript.scenario_name}`);
+            console.log(`Users Generated: ${finalScript.target_pool.length}`);
         } catch (error) {
             console.error('Failed to generate daily script:', error);
         }
@@ -83,5 +94,91 @@ export class Director {
             console.error('Error saving daily script file:', error);
             throw error;
         }
+    }
+
+    /**
+     * Programmatically generate users based on Market Demographics and LLM Trends
+     */
+    private generateUserPool(trafficTrends: any): any[] {
+        const poolSize = 100; // Generate 100 base users for the pool
+        const pool: any[] = [];
+
+        // Import demographics (lazily or standard import to avoid clutter)
+        const { MARKET_DEMOGRAPHICS, DEVICE_MAPPING } = require('./market-demographics');
+        const { v4: uuidv4 } = require('uuid');
+
+        // Helper: Weighted Random Selection
+        const pickWeighted = (weights: Record<string, number>, modifiers: Record<string, number> = {}): string => {
+            let total = 0;
+            const entries = Object.entries(weights);
+            const adjWeights = entries.map(([k, w]) => {
+                const mod = modifiers[k] || modifiers[`${k}`] || 1.0;
+                const finalW = w * mod;
+                total += finalW;
+                return { k, w: finalW };
+            });
+
+            const r = Math.random() * total;
+            let sum = 0;
+            for (const { k, w } of adjWeights) {
+                sum += w;
+                if (r <= sum) return k;
+            }
+            return entries[0][0]; // Fallback
+        };
+
+        const generateIP = (country: string): string => {
+            // Very Mock IP generation. Real geo-ip logic is complex.
+            // We just prefix to look semi-valid.
+            const prefixes: any = { 'US': 104, 'CN': 202, 'JP': 150, 'GB': 80 };
+            const p1 = prefixes[country] || (Math.floor(Math.random() * 200) + 10);
+            return `${p1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+        };
+
+        // Extract modifiers from LLM response
+        const countryMods = trafficTrends?.country_weights || {};
+        const osMods = trafficTrends?.os_weights || {};
+        const browserMods = trafficTrends?.browser_weights || {};
+
+        for (let i = 0; i < poolSize; i++) {
+            // Cascade Selection
+            const country = pickWeighted(MARKET_DEMOGRAPHICS.countries, countryMods);
+            const os = pickWeighted(MARKET_DEMOGRAPHICS.os, osMods);
+            const browser = pickWeighted(MARKET_DEMOGRAPHICS.browser, browserMods); // Simplified: Assume independent for now, though Safari~iOS strictly
+
+            // Correction: Enforce Safari on iOS
+            let finalBrowser = browser;
+            if (os === 'ios') finalBrowser = 'safari';
+            if (os === 'macos' && browser === 'edge') finalBrowser = 'safari'; // Bias mac to safari/chrome
+
+            // Select Device
+            const devices = DEVICE_MAPPING[os] || ['generic'];
+            const device = devices[Math.floor(Math.random() * devices.length)];
+
+            // Interests (random mix)
+            const interestsList = ['tech', 'news', 'sports', 'finance', 'fashion', 'travel', 'gaming', 'music'];
+            const interests = [];
+            if (Math.random() > 0.5) interests.push(interestsList[Math.floor(Math.random() * interestsList.length)]);
+            if (Math.random() > 0.5) interests.push(interestsList[Math.floor(Math.random() * interestsList.length)]);
+
+            pool.push({
+                // user_id removed - generated at runtime by Pulse
+                slot_id: `s_${Math.floor(Math.random() * 10000)}`,
+                slot_type: 1, // Banner
+                country,
+                city: 'Unknown', // Placeholder
+                ip: generateIP(country),
+                os,
+                browser: finalBrowser,
+                device,
+                app_id: `com.app.${Math.floor(Math.random() * 500)}`,
+                age: Math.floor(Math.random() * 40) + 18,
+                gender: Math.random() > 0.5 ? 'M' : 'F',
+                interests,
+                page_context: 'content'
+            });
+        }
+
+        return pool;
     }
 }
