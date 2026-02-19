@@ -1,4 +1,4 @@
-import { Director } from './director';
+import { Director } from '../director/director';
 import dotenv from 'dotenv';
 import path from 'path';
 

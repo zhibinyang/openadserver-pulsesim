@@ -1,4 +1,4 @@
-import { CampaignRegistry } from './registry';
+import { CampaignRegistry } from '../registry/campaign-registry';
 import dotenv from 'dotenv';
 
 dotenv.config();

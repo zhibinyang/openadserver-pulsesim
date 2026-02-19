@@ -1,6 +1,6 @@
-import { Pulse } from './engine';
-import { MonitoringServer } from './server';
-import { ProbabilityEngine } from './engine/probability';
+import { Pulse } from '../engine/pulse';
+import { MonitoringServer } from '../server';
+import { ProbabilityEngine } from '../engine/probability';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import path from 'path';
