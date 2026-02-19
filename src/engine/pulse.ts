@@ -222,8 +222,8 @@ export class Pulse {
             const clickUrl = ad.click_pixel || ad.landing_url || ad.click_url;
 
             if (clickUrl) {
-                // Random delay 1-5s
-                const delay = Math.floor(Math.random() * 4000) + 1000;
+                // Random delay 5-45s
+                const delay = Math.floor(Math.random() * 40000) + 5000;
                 this.eventQueue.addEvent('click', clickUrl, delay);
 
                 // Check Conversion (conditional on click)
@@ -252,7 +252,7 @@ export class Pulse {
 
                         // Debug log for long delays (showing minutes/hours)
                         const debugTime = convDelay / 1000 / 60; // in minutes
-                        // console.log(`[Pulse Debug] Scheduled Conv in ${debugTime.toFixed(1)} min`);
+                        console.log(`[Pulse Debug] Scheduled Conv in ${debugTime.toFixed(1)} min`);
 
                         this.eventQueue.addEvent('conversion', convUrl, convDelay);
                     }

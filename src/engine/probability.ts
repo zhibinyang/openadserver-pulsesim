@@ -58,6 +58,13 @@ export class ProbabilityEngine {
             probability *= 1.5;
         }
 
-        return Math.random() < probability;
+        const roll = Math.random();
+        const result = roll < probability;
+
+        if (result) {
+            console.log(`[Probability] Conversion WIN! (p=${probability.toFixed(4)}, roll=${roll.toFixed(4)})`);
+        }
+
+        return result;
     }
 }
