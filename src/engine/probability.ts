@@ -38,10 +38,23 @@ export class ProbabilityEngine {
         }
 
         // Apply script modifiers
-        for (const [key, multiplier] of Object.entries(scriptModifiers)) {
-            const [field, value] = key.split(':');
-            if (userProfile[field] && String(userProfile[field]).toLowerCase() === String(value).toLowerCase()) {
-                probability *= multiplier;
+        if (Array.isArray(scriptModifiers)) {
+            // New format: [{ feature: "os:ios", weight: 1.5 }]
+            for (const mod of scriptModifiers) {
+                if (mod && mod.feature && mod.weight) {
+                    const [field, value] = mod.feature.split(':');
+                    if (userProfile[field] && String(userProfile[field]).toLowerCase() === String(value).toLowerCase()) {
+                        probability *= mod.weight;
+                    }
+                }
+            }
+        } else if (typeof scriptModifiers === 'object' && scriptModifiers !== null) {
+            // Old format: { "os:ios": 1.5 }
+            for (const [key, multiplier] of Object.entries(scriptModifiers)) {
+                const [field, value] = key.split(':');
+                if (userProfile[field] && String(userProfile[field]).toLowerCase() === String(value).toLowerCase()) {
+                    probability *= multiplier as number;
+                }
             }
         }
 

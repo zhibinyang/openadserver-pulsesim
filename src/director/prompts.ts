@@ -67,13 +67,20 @@ ${JSON.stringify(campaigns, null, 2)}
 
 # Task
 # Task
-Generate the daily market script for this date. ensuring the scenario matches the date (seasonality, day of week, holidays).
 You MUST populate 'traffic_trends' with meaningful multipliers based on the story.
+You MUST also populate 'feature_modifiers' to adjust CTR/CVR for specific segments based on the story.
 Example:
-"traffic_trends": {
-    "country_weights": [ { "code": "CN", "weight": 1.5 }, { "code": "US", "weight": 0.8 } ],
-    "os_weights": [ { "name": "ios", "weight": 1.2 } ],
-    "browser_weights": []
+{
+  "traffic_trends": {
+      "country_weights": [ { "code": "CN", "weight": 1.5 }, { "code": "US", "weight": 0.8 } ],
+      "os_weights": [ { "name": "ios", "weight": 1.2 } ],
+      "browser_weights": []
+  },
+  "feature_modifiers": [
+      { "feature": "os:ios", "weight": 1.5 },
+      { "feature": "country:JP", "weight": 1.2 },
+      { "feature": "interests:shopping", "weight": 2.0 }
+  ]
 }
 Do NOT generate 'target_pool'.
 `;
@@ -84,8 +91,16 @@ export const MARKET_SCRIPT_SCHEMA = {
         scenario_name: { type: SchemaType.STRING, description: "Theme of the day" },
         strategy_summary: { type: SchemaType.STRING, description: "Brief explanation of the market conditions" },
         feature_modifiers: {
-            type: SchemaType.OBJECT,
-            description: "CTR/CVR modifiers (e.g., 'os:ios': 1.2)",
+            type: SchemaType.ARRAY,
+            description: "List of CTR/CVR multipliers for specific features (e.g., 'os:ios' = 1.2)",
+            items: {
+                type: SchemaType.OBJECT,
+                properties: {
+                    feature: { type: SchemaType.STRING, description: "Feature key, e.g., 'os:ios' or 'country:JP'" },
+                    weight: { type: SchemaType.NUMBER, description: "Multiplier value" }
+                },
+                required: ["feature", "weight"]
+            }
         },
         traffic_trends: {
             type: SchemaType.OBJECT,
