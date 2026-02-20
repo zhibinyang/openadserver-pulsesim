@@ -153,6 +153,18 @@ export class Director {
         const osMods = toMap(trafficTrends?.os_weights, 'name');
         const browserMods = toMap(trafficTrends?.browser_weights, 'name');
 
+        // Map countries to their capitals
+        const COUNTRY_CITY_MAP: Record<string, string> = {
+            'US': 'Washington D.C.', 'CN': 'Beijing', 'JP': 'Tokyo', 'KR': 'Seoul', 'GB': 'London',
+            'DE': 'Berlin', 'FR': 'Paris', 'CA': 'Ottawa', 'AU': 'Canberra', 'IN': 'New Delhi',
+            'BR': 'Brasilia', 'RU': 'Moscow', 'SG': 'Singapore', 'HK': 'Hong Kong', 'TW': 'Taipei',
+            'ID': 'Jakarta', 'TH': 'Bangkok', 'VN': 'Hanoi', 'MY': 'Kuala Lumpur', 'PH': 'Manila',
+            'MX': 'Mexico City', 'IT': 'Rome', 'ES': 'Madrid', 'NL': 'Amsterdam', 'SE': 'Stockholm',
+            'CH': 'Bern', 'PL': 'Warsaw', 'TR': 'Ankara', 'SA': 'Riyadh', 'AE': 'Abu Dhabi',
+            'IL': 'Jerusalem', 'ZA': 'Pretoria', 'NG': 'Abuja', 'EG': 'Cairo', 'AR': 'Buenos Aires',
+            'CL': 'Santiago', 'CO': 'Bogota', 'NZ': 'Wellington', 'IE': 'Dublin', 'AT': 'Vienna'
+        };
+
         for (let i = 0; i < poolSize; i++) {
             // Cascade Selection
             const country = pickWeighted(MARKET_DEMOGRAPHICS.countries, countryMods);
@@ -174,12 +186,25 @@ export class Director {
             if (Math.random() > 0.5) interests.push(interestsList[Math.floor(Math.random() * interestsList.length)]);
             if (Math.random() > 0.5) interests.push(interestsList[Math.floor(Math.random() * interestsList.length)]);
 
+            // Select predefined slot biased IDs and dimensions
+            const slotDefs = [
+                { id: 'slot_hero_top', w: 728, h: 90 },
+                { id: 'slot_in_article', w: 300, h: 250 },
+                { id: 'slot_feed_native', w: 320, h: 50 },
+                { id: 'slot_interstitial', w: 320, h: 480 },
+                { id: 'slot_sidebar', w: 300, h: 600 },
+                { id: 'slot_footer_fixed', w: 728, h: 90 }
+            ];
+            const slot = slotDefs[Math.floor(Math.random() * slotDefs.length)];
+
             pool.push({
                 // user_id removed - generated at runtime by Pulse
-                slot_id: `s_${Math.floor(Math.random() * 10000)}`,
+                slot_id: slot.id,
                 slot_type: 1, // Banner
+                slot_width: slot.w,
+                slot_height: slot.h,
                 country,
-                city: 'Unknown', // Placeholder
+                city: COUNTRY_CITY_MAP[country] || 'Unknown',
                 ip: generateIP(country),
                 os,
                 browser: finalBrowser,

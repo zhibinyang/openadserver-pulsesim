@@ -52,6 +52,7 @@ Based on the provided Date, Active Campaigns, and Targeting Rules, generate a JS
    - Instead of generating individual users, you will define **Trend Multipliers**.
    - If the story implies high mobile usage, boost 'os:android'/'os:ios'.
    - If the story focuses on a specific region (e.g. 'Japan Tech Week'), boost 'country:JP'.
+   - **CRITICAL**: Do NOT generate weights for all options. ONLY output the top 3 to 5 most important trend multipliers for the day. All other unspecified options will automatically default to 1.0. Keep the output arrays short and concise!
 
 # Output Format
 You must output a JSON object adhering to the schema defined in the API call.
