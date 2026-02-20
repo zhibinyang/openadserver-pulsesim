@@ -21,6 +21,10 @@ export const TARGETING_ENUMS = {
         'iphone', 'ipad', 'samsung', 'xiaomi', 'huawei',
         'oppo', 'vivo', 'oneplus', 'google pixel', 'sony',
         'lg', 'motorola', 'nokia', 'realme', 'asus'
+    ],
+    interests: [
+        'tech', 'news', 'sports', 'finance', 'fashion',
+        'travel', 'gaming', 'music', 'shopping', 'automotive'
     ]
 };
 
@@ -37,6 +41,7 @@ Based on the provided Date, Active Campaigns, and Targeting Rules, generate a JS
    - OS: ${TARGETING_ENUMS.os.join(', ')}
    - Browser: ${TARGETING_ENUMS.browser.join(', ')}
    - Device: ${TARGETING_ENUMS.device.join(', ')}
+   - Interests: ${TARGETING_ENUMS.interests.join(', ')}
 
 2. **Logical Consistency**:
    - **OS/Device**: 'iphone'/'ipad' MUST imply 'ios'. 'mac' MUST imply 'macos'.
@@ -48,11 +53,10 @@ Based on the provided Date, Active Campaigns, and Targeting Rules, generate a JS
      - Safari has high share in US/JP/UK.
 
 3. **Campaign Matching**:
-5. **Traffic Trends**:
-   - Instead of generating individual users, you will define **Trend Multipliers**.
-   - If the story implies high mobile usage, boost 'os:android'/'os:ios'.
-   - If the story focuses on a specific region (e.g. 'Japan Tech Week'), boost 'country:JP'.
-   - **CRITICAL**: Do NOT generate weights for all options. ONLY output the top 3 to 5 most important trend multipliers for the day. All other unspecified options will automatically default to 1.0. Keep the output arrays short and concise!
+5. **Volume vs. Intent (CRITICAL DISTINCTION)**:
+   - 👉 **traffic_trends**: Represents **HOW MANY** people are online today (Macro DAU volume). Only adjust broad metrics (e.g., country populations, mobile vs desktop).
+   - 👉 **feature_modifiers**: Represents **HOW LIKELY** they are to click/convert today (Micro Intent/CTR). Focus on psychological factors, niches, and user interests. (e.g., A gaming tournament makes 'interests:gaming' 3x more likely to convert, even if general traffic volume hasn't changed).
+   - **CRITICAL**: Do NOT generate weights for all options. ONLY output the top 3 to 5 most important multipliers. All other unspecified options will default to 1.0. Keep both output objects short and concise!
 
 # Output Format
 You must output a JSON object adhering to the schema defined in the API call.

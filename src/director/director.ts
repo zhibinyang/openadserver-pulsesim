@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { CampaignRegistry } from '../registry';
 import { GeminiClient } from './gemini-client';
-import { USER_PROMPT_TEMPLATE } from './prompts';
+import { USER_PROMPT_TEMPLATE, TARGETING_ENUMS } from './prompts';
 
 export class Director {
     private static instance: Director;
@@ -181,7 +181,7 @@ export class Director {
             const device = devices[Math.floor(Math.random() * devices.length)];
 
             // Interests (random mix)
-            const interestsList = ['tech', 'news', 'sports', 'finance', 'fashion', 'travel', 'gaming', 'music'];
+            const interestsList = TARGETING_ENUMS.interests;
             const interests = [];
             if (Math.random() > 0.5) interests.push(interestsList[Math.floor(Math.random() * interestsList.length)]);
             if (Math.random() > 0.5) interests.push(interestsList[Math.floor(Math.random() * interestsList.length)]);
