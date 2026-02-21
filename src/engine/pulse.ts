@@ -27,10 +27,18 @@ export class Pulse {
     private probabilityEngine: ProbabilityEngine;
     private eventQueue: FutureEventQueue;
 
-    private qpsLimit = pLimit(5); // Default 5 QPS
+    private configPath: string;
+    private currentConfig = {
+        day_base: 3,
+        night_base: 1,
+        peak_multiplier: 1.2
+    };
+
+    private qpsLimit = pLimit(10); // Increased limit for potential high QPS bursts
 
     constructor() {
         this.scriptPath = path.resolve(__dirname, '../../scripts/daily_script.json');
+        this.configPath = path.resolve(__dirname, '../../scripts/pulse_config.json');
         this.registry = CampaignRegistry.getInstance();
         this.probabilityEngine = ProbabilityEngine.getInstance();
         this.eventQueue = FutureEventQueue.getInstance();
@@ -47,8 +55,9 @@ export class Pulse {
         if (this.isRunning) return;
 
         console.log('Starting Pulse Engine...');
+        await this.loadConfig();
         await this.loadScript();
-        this.watchScript();
+        this.watchFiles();
 
         // Start components
         this.eventQueue.start();
@@ -64,6 +73,17 @@ export class Pulse {
         console.log('Pulse Engine stopped.');
     }
 
+    private async loadConfig() {
+        try {
+            const data = await fs.readFile(this.configPath, 'utf-8');
+            const parsed = JSON.parse(data);
+            this.currentConfig = { ...this.currentConfig, ...parsed };
+            console.log(`✅ [Pulse] Loaded Config: Day=${this.currentConfig.day_base}, Night=${this.currentConfig.night_base}, Peak=${this.currentConfig.peak_multiplier}`);
+        } catch (error) {
+            console.log('ℹ️ [Pulse] No pulse_config.json found. Using default QPS config. (You can create scripts/pulse_config.json to override)');
+        }
+    }
+
     private async loadScript() {
         try {
             const data = await fs.readFile(this.scriptPath, 'utf-8');
@@ -76,22 +96,40 @@ export class Pulse {
         }
     }
 
-    private watchScript() {
-        console.log(`[Pulse] Watching for script updates: ${this.scriptPath}`);
-        // fs.watch is persistent
+    private watchFiles() {
+        console.log(`[Pulse] Watching for updates in scripts/`);
+
+        // Watch daily_script.json
         (async () => {
             try {
                 const watcher = fs.watch(this.scriptPath);
                 for await (const event of watcher) {
                     if (event.eventType === 'change' || event.eventType === 'rename') {
                         console.log('[Pulse] Script update detected, reloading...');
-                        // Small delay to ensure write complete
                         await new Promise(r => setTimeout(r, 500));
                         await this.loadScript();
                     }
                 }
             } catch (err) {
-                console.error('[Pulse] Watcher error:', err);
+                console.error('[Pulse] Script Watcher error:', err);
+            }
+        })();
+
+        // Watch pulse_config.json optionally
+        (async () => {
+            try {
+                // Ensure file exists before watching, or it will throw
+                try { await fs.access(this.configPath); } catch { return; }
+                const watcher = fs.watch(this.configPath);
+                for await (const event of watcher) {
+                    if (event.eventType === 'change' || event.eventType === 'rename') {
+                        console.log('[Pulse] Config update detected, reloading...');
+                        await new Promise(r => setTimeout(r, 500));
+                        await this.loadConfig();
+                    }
+                }
+            } catch (err) {
+                // Ignore, file just might not exist
             }
         })();
     }
@@ -124,23 +162,20 @@ export class Pulse {
 
     /**
      * Calculates QPS based on Time of Day and Random Volatility
-     * Night (0-6): Base 1
-     * Day (6-24): Base 3
-     * Volatility: 50% - 200%
      */
     private getDynamicQPS(): number {
         const hour = new Date().getHours();
-        let baseQPS = 3;
+        let baseQPS = this.currentConfig.day_base;
 
         // Night Mode (00:00 - 05:59)
         if (hour >= 0 && hour < 6) {
-            baseQPS = 1;
+            baseQPS = this.currentConfig.night_base;
         }
 
         // Optional: Simple curve adjustments
         // Peak hours (12-13, 19-21) -> Boost slightly
         if ((hour >= 12 && hour <= 13) || (hour >= 19 && hour <= 21)) {
-            baseQPS *= 1.2;
+            baseQPS *= this.currentConfig.peak_multiplier;
         }
 
         // Volatility: Random multiplier between 0.5 and 2.0
