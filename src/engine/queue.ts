@@ -3,7 +3,7 @@ import axios from 'axios';
 
 interface DelayedEvent {
     id: string;
-    type: 'click' | 'conversion';
+    type: 'impression' | 'click' | 'conversion';
     url: string; // The attribution URL to call
     executeAt: number; // Timestamp
     payload?: any;
@@ -42,7 +42,7 @@ export class FutureEventQueue {
         console.log('FutureEventQueue stopped.');
     }
 
-    public addEvent(type: 'click' | 'conversion', url: string, delayMs: number) {
+    public addEvent(type: 'impression' | 'click' | 'conversion', url: string, delayMs: number) {
         const event: DelayedEvent = {
             id: uuidv4(),
             type,
@@ -52,7 +52,10 @@ export class FutureEventQueue {
         this.queue.push(event);
         this.queue.sort((a, b) => a.executeAt - b.executeAt); // Keep sorted by time
 
-        console.log(`[Queue] Scheduled ${type} in ${Math.round(delayMs / 1000)}s. Queue size: ${this.queue.length}`);
+        // Don't spam the log with zero-delay impressions
+        if (delayMs > 0) {
+            console.log(`[Queue] Scheduled ${type} in ${Math.round(delayMs / 1000)}s. Queue size: ${this.queue.length}`);
+        }
     }
 
     private async processQueue() {

@@ -214,6 +214,13 @@ export class Pulse {
 
         // console.log(`[Impression] Ad ID ${ad.id} served to ${user.user_id}`);
 
+        // Fire Impression Tracking (Immediate)
+        const impUrl = ad.impression_pixel || ad.impression_url;
+        if (impUrl) {
+            // Delay 0 to fire immediately
+            this.eventQueue.addEvent('impression', impUrl, 0);
+        }
+
         // Check Click
         const shouldClick = this.probabilityEngine.shouldClick(user, this.currentScript.feature_modifiers);
         if (shouldClick) {

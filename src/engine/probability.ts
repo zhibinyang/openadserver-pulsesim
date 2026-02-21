@@ -15,6 +15,25 @@ export class ProbabilityEngine {
         'slot_footer_fixed': 0.6   // 视觉盲区，点击率低于平均水平 (0.6%)
     };
 
+    // Static CVR Biases
+    public readonly CVR_SLOT_BIASES: Record<string, number> = {
+        'slot_interstitial': 0.5,  // High misclick rate means lower actual CVR
+        'slot_in_article': 1.2,    // High intent
+        'slot_hero_top': 1.1       // Good visibility and intent
+    };
+
+    public readonly CVR_COUNTRY_BIASES: Record<string, number> = {
+        'US': 1.5,                 // Higher purchasing power
+        'GB': 1.3,
+        'IN': 0.6                  // Lower conversion rate typically
+    };
+
+    public readonly CVR_OS_BIASES: Record<string, number> = {
+        'ios': 1.3,                // iOS users historically spend more
+        'android': 0.8,
+        'windows': 1.1
+    };
+
     private constructor() { }
 
     public static getInstance(): ProbabilityEngine {
@@ -72,17 +91,43 @@ export class ProbabilityEngine {
     public shouldConvert(userProfile: any, scriptModifiers: Record<string, number>): boolean {
         let probability = this.BASE_CVR;
 
-        // Apply slot bias to CVR (Optional, but interstitial might have lower true intent CVR)
-        if (userProfile.slot_id === 'slot_interstitial') {
-            probability *= 0.5; // High misclick rate means lower actual CVR
-        } else if (userProfile.slot_id === 'slot_in_article') {
-            probability *= 1.2; // High intent
+        // Apply slot bias
+        if (userProfile.slot_id && this.CVR_SLOT_BIASES[userProfile.slot_id]) {
+            probability *= this.CVR_SLOT_BIASES[userProfile.slot_id];
         }
 
-        if (userProfile.interests && userProfile.interests.includes('shopping')) {
-            probability *= 1.5;
+        // Apply country bias
+        if (userProfile.country && this.CVR_COUNTRY_BIASES[userProfile.country.toUpperCase()]) {
+            probability *= this.CVR_COUNTRY_BIASES[userProfile.country.toUpperCase()];
         }
 
+        // Apply OS bias
+        if (userProfile.os && this.CVR_OS_BIASES[userProfile.os.toLowerCase()]) {
+            probability *= this.CVR_OS_BIASES[userProfile.os.toLowerCase()];
+        }
+
+        // Apply script modifiers
+        if (Array.isArray(scriptModifiers)) {
+            // New format: [{ feature: "os:ios", weight: 1.5 }]
+            for (const mod of scriptModifiers) {
+                if (mod && mod.feature && mod.weight) {
+                    const [field, value] = mod.feature.split(':');
+                    if (userProfile[field] && String(userProfile[field]).toLowerCase() === String(value).toLowerCase()) {
+                        probability *= mod.weight;
+                    }
+                }
+            }
+        } else if (typeof scriptModifiers === 'object' && scriptModifiers !== null) {
+            // Old format: { "os:ios": 1.5 }
+            for (const [key, multiplier] of Object.entries(scriptModifiers)) {
+                const [field, value] = key.split(':');
+                if (userProfile[field] && String(userProfile[field]).toLowerCase() === String(value).toLowerCase()) {
+                    probability *= multiplier as number;
+                }
+            }
+        }
+
+        probability = Math.min(Math.max(probability, 0), 1);
         const roll = Math.random();
         const result = roll < probability;
 
