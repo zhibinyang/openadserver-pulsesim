@@ -16,7 +16,8 @@ export class FutureEventQueue {
     private queue: DelayedEvent[] = [];
     private isRunning: boolean = false;
     private processingInterval: NodeJS.Timeout | null = null;
-    private readonly dumpPath = path.join(process.cwd(), 'queue_dump.json');
+    private readonly dataDir = path.join(process.cwd(), 'data');
+    private readonly dumpPath = path.join(this.dataDir, 'queue_dump.json');
 
     private constructor() {
         this.loadFromDisk();
@@ -45,6 +46,9 @@ export class FutureEventQueue {
     private saveToDisk() {
         if (this.queue.length > 0) {
             try {
+                if (!fs.existsSync(this.dataDir)) {
+                    fs.mkdirSync(this.dataDir, { recursive: true });
+                }
                 fs.writeFileSync(this.dumpPath, JSON.stringify(this.queue), 'utf-8');
                 console.log(`[Queue] Saved ${this.queue.length} delayed events to disk.`);
             } catch (e) {

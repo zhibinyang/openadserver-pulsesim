@@ -9,6 +9,7 @@ services:
       - "3002:3002"
     volumes:
       - ./scripts:/usr/src/app/scripts
+      - ./data:/usr/src/app/data
     env_file:
       - .env
     environment:
