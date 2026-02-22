@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface DelayedEvent {
     id: string;
@@ -14,14 +16,41 @@ export class FutureEventQueue {
     private queue: DelayedEvent[] = [];
     private isRunning: boolean = false;
     private processingInterval: NodeJS.Timeout | null = null;
+    private readonly dumpPath = path.join(process.cwd(), 'queue_dump.json');
 
-    private constructor() { }
+    private constructor() {
+        this.loadFromDisk();
+    }
 
     public static getInstance(): FutureEventQueue {
         if (!FutureEventQueue.instance) {
             FutureEventQueue.instance = new FutureEventQueue();
         }
         return FutureEventQueue.instance;
+    }
+
+    private loadFromDisk() {
+        if (fs.existsSync(this.dumpPath)) {
+            try {
+                const data = fs.readFileSync(this.dumpPath, 'utf-8');
+                this.queue = JSON.parse(data);
+                console.log(`[Queue] Loaded ${this.queue.length} delayed events from disk.`);
+                fs.unlinkSync(this.dumpPath); // Remove after loading to prevent stale double-loads
+            } catch (e) {
+                console.error(`[Queue] Failed to load queue dump: ${e}`);
+            }
+        }
+    }
+
+    private saveToDisk() {
+        if (this.queue.length > 0) {
+            try {
+                fs.writeFileSync(this.dumpPath, JSON.stringify(this.queue), 'utf-8');
+                console.log(`[Queue] Saved ${this.queue.length} delayed events to disk.`);
+            } catch (e) {
+                console.error(`[Queue] Failed to save queue dump: ${e}`);
+            }
+        }
     }
 
     public start() {
@@ -39,6 +68,7 @@ export class FutureEventQueue {
             clearInterval(this.processingInterval);
             this.processingInterval = null;
         }
+        this.saveToDisk();
         console.log('FutureEventQueue stopped.');
     }
 

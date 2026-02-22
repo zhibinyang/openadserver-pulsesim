@@ -17,4 +17,4 @@ RUN npm run build
 EXPOSE 3002
 
 # Start Application
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/index.js"]
