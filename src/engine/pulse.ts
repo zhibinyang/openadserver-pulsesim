@@ -4,6 +4,7 @@ import { CampaignRegistry } from '../registry';
 import { ProbabilityEngine } from './probability';
 import { FutureEventQueue } from './queue';
 import { StatsCollector } from './stats';
+import { Director } from '../director';
 import path from 'path';
 import fs from 'fs/promises';
 import dotenv from 'dotenv';
@@ -62,6 +63,8 @@ export class Pulse {
         // Start components
         this.eventQueue.start();
         await this.registry.initialize();
+        // Initialize Director for script generation
+        await Director.getInstance().initialize();
 
         this.isRunning = true;
         this.loop();
@@ -91,8 +94,21 @@ export class Pulse {
             console.log(`✅ [Pulse] Loaded Script: ${this.currentScript?.scenario_name}`);
             console.log(`   Target Pool Size: ${this.currentScript?.target_pool.length}`);
         } catch (error) {
-            console.error('⚠️ [Pulse] Failed to load daily_script.json. Waiting for file...');
-            this.currentScript = null;
+            console.log('ℹ️ [Pulse] No daily_script.json found. Generating new script via LLM...');
+            try {
+                // Generate new script using Director
+                const director = Director.getInstance();
+                await director.generateDailyScript();
+                // Reload the generated script
+                const data = await fs.readFile(this.scriptPath, 'utf-8');
+                this.currentScript = JSON.parse(data);
+                console.log(`✅ [Pulse] Generated and loaded new script: ${this.currentScript?.scenario_name}`);
+                console.log(`   Target Pool Size: ${this.currentScript?.target_pool.length}`);
+            } catch (generateError) {
+                console.error('⚠️ [Pulse] Failed to generate daily script. Waiting for manual file...');
+                console.error(`   Error: ${(generateError as any).message}`);
+                this.currentScript = null;
+            }
         }
     }
 
