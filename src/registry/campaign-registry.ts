@@ -8,10 +8,12 @@ export class CampaignRegistry {
     private static instance: CampaignRegistry;
     private campaigns: Map<number, Targeting> = new Map();
     private lastUpdated: Date | null = null;
-    private readonly apiUrl: string;
+    private readonly serviceUrl: string;
+    private readonly apiKey: string | undefined;
 
     private constructor() {
-        this.apiUrl = process.env.OPENADSERVER_HOST || 'http://localhost:3000';
+        this.serviceUrl = process.env.OAS_INTERNAL_SERVICE_URL || process.env.OPENADSERVER_HOST || 'http://localhost:3000';
+        this.apiKey = process.env.OAS_INTERNAL_API_KEY;
     }
 
     public static getInstance(): CampaignRegistry {
@@ -28,8 +30,14 @@ export class CampaignRegistry {
 
     public async refresh(): Promise<void> {
         try {
-            console.log(`Fetching campaigns from ${this.apiUrl}/api/v1/targeting...`);
-            const response = await axios.get<Targeting[]>(`${this.apiUrl}/api/v1/targeting`);
+            console.log(`Fetching campaigns from ${this.serviceUrl}/api/v1/targeting...`);
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json'
+            };
+            if (this.apiKey) {
+                headers['X-API-Key'] = this.apiKey;
+            }
+            const response = await axios.get<Targeting[]>(`${this.serviceUrl}/api/v1/targeting`, { headers });
 
             const targetingList = response.data;
             this.campaigns.clear();
