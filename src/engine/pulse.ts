@@ -1,6 +1,7 @@
 import axios from 'axios';
 import pLimit from 'p-limit';
 import { CampaignRegistry } from '../registry';
+import { UserPoolRegistry } from '../registry/user-pool-registry';
 import { ProbabilityEngine } from './probability';
 import { FutureEventQueue } from './queue';
 import { StatsCollector } from './stats';
@@ -88,11 +89,32 @@ export class Pulse {
     }
 
     private async loadScript() {
+        const initUserPool = () => {
+            if (!this.currentScript) return;
+            const userPool = UserPoolRegistry.getInstance();
+            if (!userPool.isInitialized()) {
+                console.log('🔄 [Pulse] Auto-initializing user pool...');
+                const userTemplates = this.currentScript.target_pool.map((user: any) => ({
+                    country: user.country,
+                    os: user.os,
+                    device: user.device,
+                    interests: user.interests,
+                    age: user.age,
+                    gender: user.gender === 'M' ? 'male' as const : user.gender === 'F' ? 'female' as const : 'other' as const
+                }));
+                userPool.generateInitialPool(userTemplates);
+                const stats = userPool.getStats();
+                console.log(`✅ [Pulse] User pool initialized with ${stats.totalUsers} users`);
+                console.log(`   Group distribution: ${JSON.stringify(stats.groupDistribution)}`);
+            }
+        };
+
         try {
             const data = await fs.readFile(this.scriptPath, 'utf-8');
             this.currentScript = JSON.parse(data);
             console.log(`✅ [Pulse] Loaded Script: ${this.currentScript?.scenario_name}`);
             console.log(`   Target Pool Size: ${this.currentScript?.target_pool.length}`);
+            initUserPool();
         } catch (error) {
             console.log('ℹ️ [Pulse] No daily_script.json found. Generating new script via LLM...');
             try {
@@ -104,6 +126,7 @@ export class Pulse {
                 this.currentScript = JSON.parse(data);
                 console.log(`✅ [Pulse] Generated and loaded new script: ${this.currentScript?.scenario_name}`);
                 console.log(`   Target Pool Size: ${this.currentScript?.target_pool.length}`);
+                initUserPool();
             } catch (generateError) {
                 console.error('⚠️ [Pulse] Failed to generate daily script. Waiting for manual file...');
                 console.error(`   Error: ${(generateError as any).message}`);
@@ -208,15 +231,29 @@ export class Pulse {
             try {
                 if (!this.currentScript) return;
 
-                // 1. Pick User
-                const pool = this.currentScript.target_pool;
-                const user = pool[Math.floor(Math.random() * pool.length)];
+                const userPool = UserPoolRegistry.getInstance();
+                if (!userPool.isInitialized()) {
+                    // Skip request if user pool not yet initialized
+                    return;
+                }
 
-                // 2. Prepare Request
+                // 1. Pick slot/context template from daily target pool
+                const templatePool = this.currentScript.target_pool;
+                const template = templatePool[Math.floor(Math.random() * templatePool.length)];
+
+                // 2. Pick fixed user from persistent user pool
+                const fixedUser = userPool.getRandomUser();
+
+                // 3. Merge template and fixed user attributes (fixed user overrides template for user properties)
+                const user = {
+                    ...template,
+                    ...fixedUser
+                };
+
+                // 4. Prepare Request
                 // We enforce the ad-request.dto structure
                 const adRequest = {
                     ...user,
-                    user_id: uuidv4(),
                     request_id: uuidv4(),
                     timestamp: Date.now()
                 };

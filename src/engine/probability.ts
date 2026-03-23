@@ -5,6 +5,21 @@ export class ProbabilityEngine {
     private readonly BASE_CTR = 0.01; // 1% Base CTR
     private readonly BASE_CVR = 0.05; // 5% CVR after click
 
+    // User Group Biases
+    private readonly GROUP_CTR_BIASES: Record<string, number> = {
+        'whale': 2.0,    // High click rate for high value users
+        'minnow': 1.2,   // Moderate click rate
+        'browser': 0.8,  // Low click rate for casual browsers
+        'newbie': 1.5    // Higher initial engagement for new users
+    };
+
+    private readonly GROUP_CVR_BIASES: Record<string, number> = {
+        'whale': 4.0,    // 20% CVR (base 5% * 4x)
+        'minnow': 1.0,   // 5% CVR (matches base)
+        'browser': 0.02, // 0.1% CVR (almost no conversions)
+        'newbie': 1.0    // Base CVR for new users, decays with age
+    };
+
     // Slot Biases (CTR Multipliers)
     public readonly SLOT_BIASES: Record<string, number> = {
         'slot_hero_top': 5.0,      // 页面核心位置，点击率是平均值的 5 倍 (5%)
@@ -51,6 +66,24 @@ export class ProbabilityEngine {
     public shouldClick(userProfile: any, scriptModifiers: Record<string, number>): boolean {
         let probability = this.BASE_CTR;
 
+        // Apply user group bias
+        if (userProfile.group) {
+            let groupBias = this.GROUP_CTR_BIASES[userProfile.group] || 1.0;
+
+            // Decay newbie bias over 7 days
+            if (userProfile.group === 'newbie' && userProfile.createdAt) {
+                const ageDays = (Date.now() - userProfile.createdAt) / (1000 * 60 * 60 * 24);
+                if (ageDays > 7) {
+                    groupBias = this.GROUP_CTR_BIASES['browser'];
+                } else if (ageDays > 3) {
+                    // Linear decay from 1.5 to 0.8 over days 3-7
+                    groupBias = 1.5 - (ageDays - 3) * (0.7 / 4);
+                }
+            }
+
+            probability *= groupBias;
+        }
+
         // Apply slot bias
         if (userProfile.slot_id && this.SLOT_BIASES[userProfile.slot_id]) {
             probability *= this.SLOT_BIASES[userProfile.slot_id];
@@ -90,6 +123,24 @@ export class ProbabilityEngine {
 
     public shouldConvert(userProfile: any, scriptModifiers: Record<string, number>): boolean {
         let probability = this.BASE_CVR;
+
+        // Apply user group bias
+        if (userProfile.group) {
+            let groupBias = this.GROUP_CVR_BIASES[userProfile.group] || 1.0;
+
+            // Decay newbie bias over 7 days
+            if (userProfile.group === 'newbie' && userProfile.createdAt) {
+                const ageDays = (Date.now() - userProfile.createdAt) / (1000 * 60 * 60 * 24);
+                if (ageDays > 7) {
+                    groupBias = this.GROUP_CVR_BIASES['browser'];
+                } else if (ageDays > 3) {
+                    // Linear decay from 1.0 to 0.02 over days 3-7
+                    groupBias = 1.0 - (ageDays - 3) * (0.98 / 4);
+                }
+            }
+
+            probability *= groupBias;
+        }
 
         // Apply slot bias
         if (userProfile.slot_id && this.CVR_SLOT_BIASES[userProfile.slot_id]) {

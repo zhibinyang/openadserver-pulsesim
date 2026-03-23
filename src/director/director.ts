@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import fs from 'fs/promises';
 import path from 'path';
 import { CampaignRegistry } from '../registry';
+import { UserPoolRegistry } from '../registry/user-pool-registry';
 import { GeminiClient } from './gemini-client';
 import { USER_PROMPT_TEMPLATE, TARGETING_ENUMS } from './prompts';
 
@@ -80,6 +81,26 @@ export class Director {
             console.log(`Daily script generated and saved to ${this.scriptPath}`);
             console.log(`Scenario: ${finalScript.scenario_name}`);
             console.log(`Users Generated: ${finalScript.target_pool.length}`);
+
+            // 6. Update user pool (rotation or initial generation)
+            const userPool = UserPoolRegistry.getInstance();
+            // Map user templates to match PoolUser interface
+            const userTemplates = finalScript.target_pool.map((user: any) => ({
+                country: user.country,
+                os: user.os,
+                device: user.device,
+                interests: user.interests,
+                age: user.age,
+                gender: user.gender === 'M' ? 'male' as const : user.gender === 'F' ? 'female' as const : 'other' as const
+            }));
+
+            if (!userPool.isInitialized()) {
+                // Generate initial pool on first run
+                userPool.generateInitialPool(userTemplates);
+            } else {
+                // Rotate users daily
+                userPool.rotateUsers(userPool.DAILY_ROTATION_COUNT, userTemplates);
+            }
         } catch (error) {
             console.error('Failed to generate daily script:', error);
         }

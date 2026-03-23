@@ -39,3 +39,4 @@ scripts/daily_script.json
 # Test coverage
 coverage/
 .nyc_output/
+data/

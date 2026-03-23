@@ -17,6 +17,14 @@ export class MonitoringServer {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(stats, null, 2));
             }
+            else if (req.method === 'GET' && req.url === '/user-pool-stats') {
+                import('./registry/user-pool-registry').then(({ UserPoolRegistry }) => {
+                    const userPool = UserPoolRegistry.getInstance();
+                    const stats = userPool.getStats();
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(stats, null, 2));
+                });
+            }
             else if (req.method === 'POST' && req.url === '/script/generate') {
                 console.log('Received manual script generation request...');
                 // Director is singleton, so we can lazily import or use instance if available
